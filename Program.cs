@@ -293,25 +293,45 @@ namespace TableDetection
                 visImage = temp;
             }
 
-            // Draw horizontal lines in RED
-            if (LineFeatures?.HorizontalPositions != null)
+            // a. Complete table in red (rectangle)
+            var tableBounds = CalculateTableBoundaries();
+            if (tableBounds.ContainsKey("topleft") && tableBounds.ContainsKey("bottomright"))
             {
-                foreach (var y in LineFeatures.HorizontalPositions)
+                Cv2.Rectangle(visImage, tableBounds["topleft"], tableBounds["bottomright"], 
+                    new Scalar(0, 0, 255), 3); // Red
+            }
+
+            // b. Header in green (rectangle)
+            var headerBounds = CalculateHeaderBoundaries();
+            if (headerBounds.ContainsKey("topleft") && headerBounds.ContainsKey("bottomright"))
+            {
+                Cv2.Rectangle(visImage, headerBounds["topleft"], headerBounds["bottomright"], 
+                    new Scalar(0, 255, 0), 3); // Green
+            }
+
+            // c. Rows in yellow (rectangle)
+            if (LineFeatures?.HorizontalPositions != null && LineFeatures.HorizontalPositions.Count > 1)
+            {
+                int minX = LineFeatures.VerticalPositions?.Count > 0 ? LineFeatures.VerticalPositions.Min() : 0;
+                int maxX = LineFeatures.VerticalPositions?.Count > 0 ? LineFeatures.VerticalPositions.Max() : visImage.Width;
+                
+                for (int i = 1; i < LineFeatures.HorizontalPositions.Count - 1; i++)
                 {
-                    Cv2.Line(visImage, new Point(0, y), 
-                        new Point(visImage.Width, y), 
-                        new Scalar(0, 0, 255), 2);
+                    int rowTop = LineFeatures.HorizontalPositions[i];
+                    int rowBottom = LineFeatures.HorizontalPositions[i + 1];
+                    Cv2.Rectangle(visImage, new Point(minX, rowTop), new Point(maxX, rowBottom),
+                        new Scalar(0, 255, 255), 2); // Yellow
                 }
             }
 
-            // Draw vertical lines in BLUE
+            // d. Columns with straight strokes in black
             if (LineFeatures?.VerticalPositions != null)
             {
                 foreach (var x in LineFeatures.VerticalPositions)
                 {
                     Cv2.Line(visImage, new Point(x, 0), 
                         new Point(x, visImage.Height), 
-                        new Scalar(255, 0, 0), 2);
+                        new Scalar(0, 0, 0), 2); // Black
                 }
             }
 
@@ -321,7 +341,7 @@ namespace TableDetection
                          $"Cols: {LineFeatures?.VerticalPositions?.Count ?? 0}";
             Cv2.PutText(visImage, text, new Point(10, 30),
                 HersheyFonts.HersheySimplex, 0.6, 
-                new Scalar(0, 255, 0), 2);
+                new Scalar(255, 255, 255), 2); // White text for visibility
 
             if (!string.IsNullOrEmpty(savePath))
             {
@@ -338,6 +358,10 @@ namespace TableDetection
                 ExtractLineFeatures();
             }
 
+            // Calculate table boundaries
+            var tableBoundaries = CalculateTableBoundaries();
+            var headerBoundaries = CalculateHeaderBoundaries();
+
             return new Dictionary<string, object>
             {
                 ["name"] = Name,
@@ -347,7 +371,47 @@ namespace TableDetection
                 ["num_cols"] = LineFeatures?.VerticalPositions?.Count ?? 0,
                 ["avg_row_height"] = LineFeatures?.AverageRowHeight ?? 0.0,
                 ["avg_col_width"] = LineFeatures?.AverageColumnWidth ?? 0.0,
-                ["header_height"] = LineFeatures?.HeaderHeight ?? 0
+                ["header_height"] = LineFeatures?.HeaderHeight ?? 0,
+                ["table_boundaries"] = tableBoundaries,
+                ["header_boundaries"] = headerBoundaries
+            };
+        }
+
+        private Dictionary<string, Point> CalculateTableBoundaries()
+        {
+            if (LineFeatures?.HorizontalPositions == null || LineFeatures?.VerticalPositions == null)
+                return new Dictionary<string, Point>();
+
+            int minX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Min() : 0;
+            int maxX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Max() : originalImage.Width;
+            int minY = LineFeatures.HorizontalPositions.Count > 0 ? LineFeatures.HorizontalPositions.Min() : 0;
+            int maxY = LineFeatures.HorizontalPositions.Count > 0 ? LineFeatures.HorizontalPositions.Max() : originalImage.Height;
+
+            return new Dictionary<string, Point>
+            {
+                ["topleft"] = new Point(minX, minY),
+                ["topright"] = new Point(maxX, minY),
+                ["bottomleft"] = new Point(minX, maxY),
+                ["bottomright"] = new Point(maxX, maxY)
+            };
+        }
+
+        private Dictionary<string, Point> CalculateHeaderBoundaries()
+        {
+            if (LineFeatures?.HorizontalPositions == null || LineFeatures?.VerticalPositions == null || LineFeatures.HorizontalPositions.Count < 2)
+                return new Dictionary<string, Point>();
+
+            int minX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Min() : 0;
+            int maxX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Max() : originalImage.Width;
+            int headerTop = LineFeatures.HorizontalPositions[0];
+            int headerBottom = LineFeatures.HorizontalPositions[1];
+
+            return new Dictionary<string, Point>
+            {
+                ["topleft"] = new Point(minX, headerTop),
+                ["topright"] = new Point(maxX, headerTop),
+                ["bottomleft"] = new Point(minX, headerBottom),
+                ["bottomright"] = new Point(maxX, headerBottom)
             };
         }
 
@@ -418,20 +482,52 @@ namespace TableDetection
             // Extract features automatically
             var features = tablePrototype.ExtractLineFeatures();
             
-            // Print results
+            // Get detailed summary
+            var summary = tablePrototype.GetSummary();
+            
             Console.WriteLine($"\n=== {tableName} Analysis ===");
+            
+            // 1. StdOut: Boundaries of the complete table in the screenshot
+            if (summary.ContainsKey("table_boundaries"))
+            {
+                var tableBounds = (Dictionary<string, Point>)summary["table_boundaries"];
+                Console.WriteLine("Boundaries of the complete table in the screenshot:");
+                if (tableBounds.ContainsKey("topleft"))
+                    Console.WriteLine($"  topleft: ({tableBounds["topleft"].X}, {tableBounds["topleft"].Y})");
+                if (tableBounds.ContainsKey("topright"))
+                    Console.WriteLine($"  topright: ({tableBounds["topright"].X}, {tableBounds["topright"].Y})");
+                if (tableBounds.ContainsKey("bottomleft"))
+                    Console.WriteLine($"  bottomleft: ({tableBounds["bottomleft"].X}, {tableBounds["bottomleft"].Y})");
+                if (tableBounds.ContainsKey("bottomright"))
+                    Console.WriteLine($"  bottomright: ({tableBounds["bottomright"].X}, {tableBounds["bottomright"].Y})");
+            }
+            
+            // 2. StdOut: Boundaries of header
+            if (summary.ContainsKey("header_boundaries"))
+            {
+                var headerBounds = (Dictionary<string, Point>)summary["header_boundaries"];
+                Console.WriteLine("Boundaries of header:");
+                if (headerBounds.ContainsKey("topleft"))
+                    Console.WriteLine($"  topleft: ({headerBounds["topleft"].X}, {headerBounds["topleft"].Y})");
+                if (headerBounds.ContainsKey("topright"))
+                    Console.WriteLine($"  topright: ({headerBounds["topright"].X}, {headerBounds["topright"].Y})");
+                if (headerBounds.ContainsKey("bottomleft"))
+                    Console.WriteLine($"  bottomleft: ({headerBounds["bottomleft"].X}, {headerBounds["bottomleft"].Y})");
+                if (headerBounds.ContainsKey("bottomright"))
+                    Console.WriteLine($"  bottomright: ({headerBounds["bottomright"].X}, {headerBounds["bottomright"].Y})");
+            }
+            
             Console.WriteLine($"Características detectadas: {features}");
             Console.WriteLine($"Tipo de tabla: {tablePrototype.TableType}");
             
-            // Get detailed summary
-            var summary = tablePrototype.GetSummary();
             Console.WriteLine("\nResumen detallado:");
             foreach (var kvp in summary)
             {
-                Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
+                if (kvp.Key != "table_boundaries" && kvp.Key != "header_boundaries")
+                    Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
             }
             
-            // Visualize and save result
+            // 3. Visualize and save result with color coding
             string outputPath = $"output_{tableName.ToLower()}.png";
             using var result = tablePrototype.VisualizeFeatures(outputPath);
             Console.WriteLine($"Resultado guardado en: {outputPath}");
