@@ -5,6 +5,103 @@ using System.Linq;
 
 namespace TableDetection
 {
+    public class CommandLineArgs
+    {
+        public string? ScreenshotPath { get; set; }
+        public string? PartialImagePath { get; set; }
+        public bool ShowHelp { get; set; }
+        public bool IsValid => !string.IsNullOrEmpty(ScreenshotPath) && !string.IsNullOrEmpty(PartialImagePath);
+
+        public static CommandLineArgs Parse(string[] args)
+        {
+            var result = new CommandLineArgs();
+            
+            if (args.Length == 0)
+            {
+                result.ShowHelp = true;
+                return result;
+            }
+
+            // Support for named arguments (-src, -par, --screenshot, --partial)
+            for (int i = 0; i < args.Length; i++)
+            {
+                string arg = args[i].ToLower();
+                
+                switch (arg)
+                {
+                    case "-src":
+                    case "--screenshot":
+                    case "-s":
+                        if (i + 1 < args.Length)
+                        {
+                            result.ScreenshotPath = args[++i];
+                        }
+                        break;
+                        
+                    case "-par":
+                    case "--partial":
+                    case "-p":
+                        if (i + 1 < args.Length)
+                        {
+                            result.PartialImagePath = args[++i];
+                        }
+                        break;
+                        
+                    case "-h":
+                    case "--help":
+                    case "/?":
+                        result.ShowHelp = true;
+                        return result;
+                        
+                    default:
+                        // Support for positional arguments (backward compatibility)
+                        if (!arg.StartsWith("-") && !arg.StartsWith("--"))
+                        {
+                            if (string.IsNullOrEmpty(result.ScreenshotPath))
+                            {
+                                result.ScreenshotPath = args[i];
+                            }
+                            else if (string.IsNullOrEmpty(result.PartialImagePath))
+                            {
+                                result.PartialImagePath = args[i];
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            return result;
+        }
+        
+        public static void ShowUsage()
+        {
+            Console.WriteLine("Table Detection Program - Command Line Usage");
+            Console.WriteLine("==========================================");
+            Console.WriteLine();
+            Console.WriteLine("USAGE:");
+            Console.WriteLine("  dotnet run [options]");
+            Console.WriteLine();
+            Console.WriteLine("OPTIONS:");
+            Console.WriteLine("  -src, --screenshot <path>    Path to the complete screenshot image");
+            Console.WriteLine("  -par, --partial <path>       Path to the partial reference image");
+            Console.WriteLine("  -h, --help                   Show this help message");
+            Console.WriteLine();
+            Console.WriteLine("EXAMPLES:");
+            Console.WriteLine("  dotnet run -src media/SAP.png -par media/SAP_partial.png");
+            Console.WriteLine("  dotnet run --screenshot screenshot.png --partial reference.png");
+            Console.WriteLine("  dotnet run media/SAP.png media/SAP_partial.png  (positional)");
+            Console.WriteLine();
+            Console.WriteLine("OUTPUT:");
+            Console.WriteLine("  1. Boundaries of the complete table (StdOut)");
+            Console.WriteLine("  2. Boundaries of header (StdOut)");
+            Console.WriteLine("  3. Annotated image with colored highlights:");
+            Console.WriteLine("     - Red rectangle: Complete table");
+            Console.WriteLine("     - Green rectangle: Header");
+            Console.WriteLine("     - Yellow rectangles: Rows");
+            Console.WriteLine("     - Black lines: Columns");
+        }
+    }
+
     public enum TableType
     /* 
     Create a Template for the clients and different types of tables allowing reusability
@@ -56,6 +153,9 @@ namespace TableDetection
         // Data Preprocessing helper functions
         public Mat Preprocess()
         {
+            // INPUT: campo de clase, ya establecido en constructor )
+            // OUTPUT: TRESHOLGimage ( imagen binarizada para análisis )
+
             // Convert to grayscale
             if (originalImage.Channels() == 3)
             {
@@ -435,71 +535,97 @@ namespace TableDetection
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Table Detection Program - Advanced Prototype Analysis");
-            Console.WriteLine("Based on Python notebook implementation\n");
+            var cliArgs = CommandLineArgs.Parse(args);
+            
+            if (cliArgs.ShowHelp)
+            {
+                CommandLineArgs.ShowUsage();
+                return;
+            }
+            
+            if (!cliArgs.IsValid)
+            {
+                Console.Error.WriteLine("Error: Both screenshot and partial image paths are required.");
+                Console.Error.WriteLine();
+                CommandLineArgs.ShowUsage();
+                Environment.Exit(1);
+            }
+            
+            // Validate that files exist
+            if (!File.Exists(cliArgs.ScreenshotPath))
+            {
+                Console.Error.WriteLine($"Error: Screenshot file not found: {cliArgs.ScreenshotPath}");
+                Environment.Exit(1);
+            }
+            
+            if (!File.Exists(cliArgs.PartialImagePath))
+            {
+                Console.Error.WriteLine($"Error: Partial image file not found: {cliArgs.PartialImagePath}");
+                Environment.Exit(1);
+            }
+
+            Console.WriteLine($"Processing screenshot: {cliArgs.ScreenshotPath}");
+            Console.WriteLine($"Using partial reference: {cliArgs.PartialImagePath}");
+            Console.WriteLine("=====================================");
             
             try
             {
-                // Test OpenCV initialization first
-                Console.WriteLine("Testing OpenCV initialization...");
+                // Test OpenCV initialization
                 string version = Cv2.GetVersionString() ?? "Unknown";
                 Console.WriteLine($"OpenCV Version: {version}");
                 
-                // Test with sample images if they exist
-                ProcessTableImage("media/SAP.png", "SAP_Table");
-                ProcessTableImage("media/WEB.png", "WEB_Table");
-                
-                Console.WriteLine("\n" + new string('=', 50));
-                Console.WriteLine("Programa ejecutado correctamente.");
-                Console.WriteLine("Si las imágenes SAP.png y WEB.png estuvieran disponibles,");
-                Console.WriteLine("se habría realizado el análisis completo de prototipos de tabla.");
+                // Process the images
+                ProcessTableImages(cliArgs.ScreenshotPath, cliArgs.PartialImagePath);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                    if (ex.InnerException.InnerException != null)
-                    {
-                        Console.WriteLine($"Inner Inner Exception: {ex.InnerException.InnerException.Message}");
-                    }
-                }
-                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                Console.Error.WriteLine($"Error processing images: {ex.Message}");
+                Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
+                Environment.Exit(1);
             }
         }
-
-        static void ProcessTableImage(string imagePath, string tableName)
+        
+        private static string GenerateOutputPath(string screenshotPath)
         {
-            if (!System.IO.File.Exists(imagePath))
-            {
-                Console.WriteLine($"Imagen no encontrada: {imagePath}");
-                return;
-            }
-
-            using var image = Cv2.ImRead(imagePath);
-            if (image.Empty())
-            {
-                Console.WriteLine($"No se pudo cargar la imagen: {imagePath}");
-                return;
-            }
-
-            // Create table prototype
-            var tablePrototype = new TablePrototype(image, tableName);
+            string directory = Path.GetDirectoryName(screenshotPath) ?? "";
+            string filename = Path.GetFileNameWithoutExtension(screenshotPath);
+            string extension = Path.GetExtension(screenshotPath);
             
-            // Extract features automatically
+            return Path.Combine(directory, $"{filename}_annotated{extension}");
+        }
+
+        static void ProcessTableImages(string screenshotPath, string partialImagePath)
+        {
+            using var screenshot = Cv2.ImRead(screenshotPath);
+            if (screenshot.Empty())
+            {
+                Console.Error.WriteLine($"Could not load screenshot: {screenshotPath}");
+                return;
+            }
+
+            using var partialImage = Cv2.ImRead(partialImagePath);
+            if (partialImage.Empty())
+            {
+                Console.Error.WriteLine($"Could not load partial image: {partialImagePath}");
+                return;
+            }
+
+            // Create table prototype using the screenshot for detection
+            var tablePrototype = new TablePrototype(screenshot, Path.GetFileNameWithoutExtension(screenshotPath));
+            
+            // Extract features from the screenshot
             var features = tablePrototype.ExtractLineFeatures();
             
             // Get detailed summary
             var summary = tablePrototype.GetSummary();
             
-            Console.WriteLine($"\n=== {tableName} Analysis ===");
+            Console.WriteLine("\n=== Table Detection Results ===");
             
             // 1. StdOut: Boundaries of the complete table in the screenshot
             if (summary.ContainsKey("table_boundaries"))
             {
                 var tableBounds = (Dictionary<string, Point>)summary["table_boundaries"];
-                Console.WriteLine("Boundaries of the complete table in the screenshot:");
+                Console.WriteLine("Table Boundaries:");
                 if (tableBounds.ContainsKey("topleft"))
                     Console.WriteLine($"  topleft: ({tableBounds["topleft"].X}, {tableBounds["topleft"].Y})");
                 if (tableBounds.ContainsKey("topright"))
@@ -508,13 +634,14 @@ namespace TableDetection
                     Console.WriteLine($"  bottomleft: ({tableBounds["bottomleft"].X}, {tableBounds["bottomleft"].Y})");
                 if (tableBounds.ContainsKey("bottomright"))
                     Console.WriteLine($"  bottomright: ({tableBounds["bottomright"].X}, {tableBounds["bottomright"].Y})");
+                Console.WriteLine();
             }
             
             // 2. StdOut: Boundaries of header
             if (summary.ContainsKey("header_boundaries"))
             {
                 var headerBounds = (Dictionary<string, Point>)summary["header_boundaries"];
-                Console.WriteLine("Boundaries of header:");
+                Console.WriteLine("Header Boundaries:");
                 if (headerBounds.ContainsKey("topleft"))
                     Console.WriteLine($"  topleft: ({headerBounds["topleft"].X}, {headerBounds["topleft"].Y})");
                 if (headerBounds.ContainsKey("topright"))
@@ -523,22 +650,16 @@ namespace TableDetection
                     Console.WriteLine($"  bottomleft: ({headerBounds["bottomleft"].X}, {headerBounds["bottomleft"].Y})");
                 if (headerBounds.ContainsKey("bottomright"))
                     Console.WriteLine($"  bottomright: ({headerBounds["bottomright"].X}, {headerBounds["bottomright"].Y})");
+                Console.WriteLine();
             }
             
-            Console.WriteLine($"Características detectadas: {features}");
-            Console.WriteLine($"Tipo de tabla: {tablePrototype.TableType}");
-            
-            Console.WriteLine("\nResumen detallado:");
-            foreach (var kvp in summary)
-            {
-                if (kvp.Key != "table_boundaries" && kvp.Key != "header_boundaries")
-                    Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
-            }
+            Console.WriteLine($"Table type detected: {tablePrototype.TableType}");
+            Console.WriteLine($"Features detected: {features}");
             
             // 3. Visualize and save result with color coding
-            string outputPath = $"output_{tableName.ToLower()}.png";
+            string outputPath = GenerateOutputPath(screenshotPath);
             using var result = tablePrototype.VisualizeFeatures(outputPath);
-            Console.WriteLine($"Resultado guardado en: {outputPath}");
+            Console.WriteLine($"Annotated image saved to: {outputPath}");
             
             tablePrototype.Dispose();
         }
