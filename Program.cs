@@ -6,6 +6,9 @@ using System.Linq;
 namespace TableDetection
 {
     public enum TableType
+    /* 
+    Create a Template for the clients and different types of tables allowing reusability
+    */
     {
         SAP,
         WEB,
@@ -13,6 +16,7 @@ namespace TableDetection
     }
 
     public class LineFeatures
+ /* Define the features we are going to use to characterize the table */
     {
         public List<int> HorizontalPositions { get; set; } = new();
         public List<int> VerticalPositions { get; set; } = new();
@@ -29,23 +33,27 @@ namespace TableDetection
         }
     }
 
+// Class to handle the data processing pipeline alongside all the process that should be done to the table
     public class TablePrototype
     {
         private Mat originalImage;
         private Mat grayImage = new Mat();
         private Mat thresholdImage = new Mat();
-        
+
         public string Name { get; set; }
         public LineFeatures LineFeatures { get; private set; } = new LineFeatures();
         public TableType TableType { get; private set; } = TableType.UNKNOWN;
         public Rect? Boundaries { get; private set; } = null; // (x, y, width, height)
+        // Rect is used for defining the bounding box of the detected table
 
+        // Constructor
         public TablePrototype(Mat image, string name = "")
         {
             originalImage = image.Clone();
             Name = name;
         }
 
+        // Data Preprocessing helper functions
         public Mat Preprocess()
         {
             // Convert to grayscale
@@ -105,7 +113,7 @@ namespace TableDetection
             // Calculate statistics
             double avgRowHeight = CalculateAverageSpacing(hPositions);
             double avgColWidth = CalculateAverageSpacing(vPositions);
-            int headerHeight = hPositions.Count >= 2 ? 
+            int headerHeight = hPositions.Count >= 2 ?
                 hPositions[1] - hPositions[0] : 0;
 
             LineFeatures = new LineFeatures
@@ -131,7 +139,7 @@ namespace TableDetection
                 new Size(width / 4, 1)
             );
             var horizontalLines = new Mat();
-            Cv2.MorphologyEx(thresholdImage, horizontalLines, 
+            Cv2.MorphologyEx(thresholdImage, horizontalLines,
                 MorphTypes.Open, hKernel);
 
             // Vertical lines: tall vertical kernel
@@ -140,7 +148,7 @@ namespace TableDetection
                 new Size(1, height / 4)
             );
             var verticalLines = new Mat();
-            Cv2.MorphologyEx(thresholdImage, verticalLines, 
+            Cv2.MorphologyEx(thresholdImage, verticalLines,
                 MorphTypes.Open, vKernel);
 
             return (horizontalLines, verticalLines);
@@ -229,13 +237,13 @@ namespace TableDetection
         {
             // Apply binary threshold
             var binary = new Mat();
-            Cv2.Threshold(grayImage, binary, 0, 255, 
+            Cv2.Threshold(grayImage, binary, 0, 255,
                 ThresholdTypes.Binary | ThresholdTypes.Otsu);
 
             // Find contours (text regions)
-            Cv2.FindContours(binary, out Point[][] contours, 
-                out HierarchyIndex[] hierarchy, 
-                RetrievalModes.External, 
+            Cv2.FindContours(binary, out Point[][] contours,
+                out HierarchyIndex[] hierarchy,
+                RetrievalModes.External,
                 ContourApproximationModes.ApproxSimple);
 
             // Get bounding boxes and filter noise
@@ -297,7 +305,7 @@ namespace TableDetection
             var tableBounds = CalculateTableBoundaries();
             if (tableBounds.ContainsKey("topleft") && tableBounds.ContainsKey("bottomright"))
             {
-                Cv2.Rectangle(visImage, tableBounds["topleft"], tableBounds["bottomright"], 
+                Cv2.Rectangle(visImage, tableBounds["topleft"], tableBounds["bottomright"],
                     new Scalar(0, 0, 255), 3); // Red
             }
 
@@ -305,7 +313,7 @@ namespace TableDetection
             var headerBounds = CalculateHeaderBoundaries();
             if (headerBounds.ContainsKey("topleft") && headerBounds.ContainsKey("bottomright"))
             {
-                Cv2.Rectangle(visImage, headerBounds["topleft"], headerBounds["bottomright"], 
+                Cv2.Rectangle(visImage, headerBounds["topleft"], headerBounds["bottomright"],
                     new Scalar(0, 255, 0), 3); // Green
             }
 
@@ -314,7 +322,7 @@ namespace TableDetection
             {
                 int minX = LineFeatures.VerticalPositions?.Count > 0 ? LineFeatures.VerticalPositions.Min() : 0;
                 int maxX = LineFeatures.VerticalPositions?.Count > 0 ? LineFeatures.VerticalPositions.Max() : visImage.Width;
-                
+
                 for (int i = 1; i < LineFeatures.HorizontalPositions.Count - 1; i++)
                 {
                     int rowTop = LineFeatures.HorizontalPositions[i];
@@ -329,8 +337,8 @@ namespace TableDetection
             {
                 foreach (var x in LineFeatures.VerticalPositions)
                 {
-                    Cv2.Line(visImage, new Point(x, 0), 
-                        new Point(x, visImage.Height), 
+                    Cv2.Line(visImage, new Point(x, 0),
+                        new Point(x, visImage.Height),
                         new Scalar(0, 0, 0), 2); // Black
                 }
             }
@@ -340,7 +348,7 @@ namespace TableDetection
                          $"Rows: {LineFeatures?.HorizontalPositions?.Count ?? 0} | " +
                          $"Cols: {LineFeatures?.VerticalPositions?.Count ?? 0}";
             Cv2.PutText(visImage, text, new Point(10, 30),
-                HersheyFonts.HersheySimplex, 0.6, 
+                HersheyFonts.HersheySimplex, 0.6,
                 new Scalar(255, 255, 255), 2); // White text for visibility
 
             if (!string.IsNullOrEmpty(savePath))
@@ -536,3 +544,4 @@ namespace TableDetection
         }
     }
 }
+
