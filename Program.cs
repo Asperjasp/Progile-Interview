@@ -485,17 +485,17 @@ namespace TableDetection
             };
         }
 
-        private Dictionary<string, Point> CalculateTableBoundaries()
+        private Dictionary<string, OpenCvSharp.Point> CalculateTableBoundaries()
         {
             if (LineFeatures?.HorizontalPositions == null || LineFeatures?.VerticalPositions == null)
-                return new Dictionary<string, Point>();
+                return new Dictionary<string, OpenCvSharp.Point>();
 
             int minX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Min() : 0;
             int maxX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Max() : originalImage.Width;
             int minY = LineFeatures.HorizontalPositions.Count > 0 ? LineFeatures.HorizontalPositions.Min() : 0;
             int maxY = LineFeatures.HorizontalPositions.Count > 0 ? LineFeatures.HorizontalPositions.Max() : originalImage.Height;
 
-            return new Dictionary<string, Point>
+            return new Dictionary<string, OpenCvSharp.Point>
             {
                 ["topleft"] = new Point(minX, minY),
                 ["topright"] = new Point(maxX, minY),
@@ -504,17 +504,17 @@ namespace TableDetection
             };
         }
 
-        private Dictionary<string, Point> CalculateHeaderBoundaries()
+        private Dictionary<string, OpenCvSharp.Point> CalculateHeaderBoundaries()
         {
             if (LineFeatures?.HorizontalPositions == null || LineFeatures?.VerticalPositions == null || LineFeatures.HorizontalPositions.Count < 2)
-                return new Dictionary<string, Point>();
+                return new Dictionary<string, OpenCvSharp.Point>();
 
             int minX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Min() : 0;
             int maxX = LineFeatures.VerticalPositions.Count > 0 ? LineFeatures.VerticalPositions.Max() : originalImage.Width;
             int headerTop = LineFeatures.HorizontalPositions[0];
             int headerBottom = LineFeatures.HorizontalPositions[1];
 
-            return new Dictionary<string, Point>
+            return new Dictionary<string, OpenCvSharp.Point>
             {
                 ["topleft"] = new Point(minX, headerTop),
                 ["topright"] = new Point(maxX, headerTop),
@@ -624,7 +624,7 @@ namespace TableDetection
             // 1. StdOut: Boundaries of the complete table in the screenshot
             if (summary.ContainsKey("table_boundaries"))
             {
-                var tableBounds = (Dictionary<string, Point>)summary["table_boundaries"];
+                var tableBounds = (Dictionary<string, OpenCvSharp.Point>)summary["table_boundaries"];
                 Console.WriteLine("Table Boundaries:");
                 if (tableBounds.ContainsKey("topleft"))
                     Console.WriteLine($"  topleft: ({tableBounds["topleft"].X}, {tableBounds["topleft"].Y})");
@@ -640,7 +640,7 @@ namespace TableDetection
             // 2. StdOut: Boundaries of header
             if (summary.ContainsKey("header_boundaries"))
             {
-                var headerBounds = (Dictionary<string, Point>)summary["header_boundaries"];
+                var headerBounds = (Dictionary<string, OpenCvSharp.Point>)summary["header_boundaries"];
                 Console.WriteLine("Header Boundaries:");
                 if (headerBounds.ContainsKey("topleft"))
                     Console.WriteLine($"  topleft: ({headerBounds["topleft"].X}, {headerBounds["topleft"].Y})");

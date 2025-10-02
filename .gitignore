@@ -4,6 +4,8 @@
 
 # The output files from running the console program in the dotnet docker container and the ipynb notebook
 
+SAP_annotated.png
+WEB_annotated.png
 output_sap_table.png
 output_web_table.png
 sap_features.png
