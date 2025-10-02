@@ -613,7 +613,7 @@ A python like solution was provided and build before hand, since I am more confo
 ### Historical Troubles
 
 >[!WARNING]
-There Have been a lot of seemingly unsolved troubles dating back to 2018 installing OpenCvSharp so we followed the advise of [installing via Docker Image **Ubuntu 24.04 ( Noble ) WSL**](https://github.com/shimat/opencvsharp/blob/main/docker/ubuntu24-dotnet8-opencv4.12.0/Dockerfile) supporting **.NET 8.0** given by the autor of the OpenCvSharp Library [Shimat](https://www.notion.so/OpenCvSharp4-in-NET-and-C-Troubleshooting-27f1075a5e82805b83b1d4750a537419?source=copy_link) in that issue
+There Have been a lot of seemingly unsolved troubles dating back to 2018 installing OpenCvSharp so we followed the advise of [installing via Docker Image **Ubuntu 24.04 ( Noble ) WSL**](https://github.com/shimat/opencvsharp/blob/main/docker/ubuntu24-dotnet8-opencv4.12.0/Dockerfile) supporting **.NET 8.0** given by the autor of the OpenCvSharp Library [Shimat](https://github.com/shimat/opencvsharp/issues/1776#issuecomment-3210340555) in that issue and here are all the attemps documented I tried in [Notion](https://www.notion.so/OpenCvSharp4-in-NET-and-C-Troubleshooting-27f1075a5e82805b83b1d4750a537419?source=copy_link)
 
 - [Unable to load shared library 'OpenCvSharpExtern' or one of its dependencies. #701](https://github.com/shimat/opencvsharp/issues/701)
 
