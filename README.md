@@ -137,8 +137,9 @@ Or initiate a new console project on your own with the command, and create the f
 dotnet new console -n Progile
 touch Dockerfile .dockerignore .gitignore 
 
-# Copy the content from the Dockerfile in the repo for the Docker building
 ```
+Copy the content from the Dockerfile here that you find in this repo or in the [Docker OpenCvSharp Docker for Ubuntu 24.04 ( Noble ) repo](https://github.com/shimat/opencvsharp/blob/main/docker/ubuntu24-dotnet8-opencv4.12.0/Dockerfile)  for preparing the Docker building, which seemed the best option to work with OpenCv because some [historical troubles](#historical-troubles)
+
 
 Then we are going to build the Docker image
 ```sh
@@ -361,15 +362,18 @@ HeaderHeight = HorizontalPositions[1] - HorizontalPositions[0]
 > [!NOTE]
 A python like solution was provided and build before hand, since I am more confortable with the  Python OpenCV environment so the C# solution is based in the `Progile.ipynb` notebook
 
+
 - **OpenCvSharp4 Version**: We use the version 4.11.0.20250507 for compatibility with Ubuntu 24.04
+
 
 - **Docker**:  Multi-stage building is used to optimize the size of the final image and because that was the format the original Docker image was
 
 
 
+### Historical Troubles
 
 >[!WARNING]
-There Have been a lot of trouble dating back to 2018 installing OpenCvSharp so we followed the advise of [installing via Docker Image **Ubuntu 24.04 ( Noble ) WSL**](https://github.com/shimat/opencvsharp/blob/main/docker/ubuntu24-dotnet8-opencv4.12.0/Dockerfile) supporting **.NET 8.0** given by the autor of the OpenCvSharp Library [Shimat](https://www.notion.so/OpenCvSharp4-in-NET-and-C-Troubleshooting-27f1075a5e82805b83b1d4750a537419?source=copy_link) in that issue
+There Have been a lot of seemingly unsolved troubles dating back to 2018 installing OpenCvSharp so we followed the advise of [installing via Docker Image **Ubuntu 24.04 ( Noble ) WSL**](https://github.com/shimat/opencvsharp/blob/main/docker/ubuntu24-dotnet8-opencv4.12.0/Dockerfile) supporting **.NET 8.0** given by the autor of the OpenCvSharp Library [Shimat](https://www.notion.so/OpenCvSharp4-in-NET-and-C-Troubleshooting-27f1075a5e82805b83b1d4750a537419?source=copy_link) in that issue
 
 - [Unable to load shared library 'OpenCvSharpExtern' or one of its dependencies. #701](https://github.com/shimat/opencvsharp/issues/701)
 
