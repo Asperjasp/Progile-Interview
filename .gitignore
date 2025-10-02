@@ -2,7 +2,11 @@
 **/obj
 .dockerignore
 
-# The output files from running the console program in the dotnet docker container.
+# The output files from running the console program in the dotnet docker container and the ipynb notebook
 
 output_sap_table.png
 output_web_table.png
+sap_features.png
+web_features.png
+partial_gray_SAP.png
+partial_gray_WEB.png
